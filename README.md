@@ -4,14 +4,12 @@
   <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=24&pause=1000&color=7AA2F7&center=true&vCenter=true&width=600&lines=Hola%2C+soy+Hemsy+%F0%9F%91%8B;Estudiante+de+Ingenier%C3%ADa+de+Sistemas;Software+%7C+IA+%7C+An%C3%A1lisis+de+datos" alt="Typing SVG" />
 </p>
 
-### ❁ Hola, soy Hemsy ❁ <img src="https://raw.githubusercontent.com/Kyle-Lobo/Kyle-Lobo/main/wave.gif" width="28px">
+### ❁ ❁ <img src="https://raw.githubusercontent.com/Kyle-Lobo/Kyle-Lobo/main/wave.gif" width="28px">
 
 ➺ Estudiante de Ingeniería de sistemas, aprendiendo desarrollo de software, inteligencia artificial y análisis de datos.
 
 - 🔭 Ahora mismo aprendiendo
-- 🌱 Aprendiendo: Git, desarrollo de software, análisis de datos
-- 📫 Correo: hcardenasarz@gmail.com
-
+  
 ### 🛠️ Tecnologías que más uso
 
 <p align="left">
