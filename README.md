@@ -38,6 +38,12 @@
   <img src="https://github-readme-stats.vercel.app/api/top-langs/?username=HemsyCA&layout=compact&theme=tokyonight&hide_border=true" height="150" />
 </p>
 
+### 🏙️ Mis contribuciones en 3D
+
+<p align="center">
+  <img src="./profile-3d-contrib/profile-night-rainbow.svg" alt="Gráfico 3D de contribuciones" />
+</p>
+
 ### 🐍 Mis contribuciones
 
 <picture>
