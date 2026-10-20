@@ -103,51 +103,112 @@ def catmull_rom(points, step=5.0):
     return samples, arrivals
 
 
-def mermaid():
-    """La sirena vista desde arriba, mirando hacia +x, con la boca en el origen."""
-    return """
-    <g transform="scale(1.3)">
-      <g>
-        <animateTransform attributeName="transform" type="rotate"
-          values="-14 -8 0;14 -8 0;-14 -8 0" dur="0.9s" repeatCount="indefinite"/>
-        <path d="M-36,0 C-40,-2 -45,-8 -53,-12 C-50,-6 -47,-3 -45.5,0 C-47,3 -50,6 -53,12 C-45,8 -40,2 -36,0Z"
-          fill="#5EF2FF" fill-opacity="0.8" stroke="#BFFAFF" stroke-width="0.6"/>
-        <path d="M-7,-5.5 C-18,-6 -28,-3.5 -37,-1.2 L-37,1.2 C-28,3.5 -18,6 -7,5.5Z" fill="url(#tail)"/>
-        <path d="M-13,-3.6 q2,3.6 0,7.2 M-19,-3.2 q2,3.2 0,6.4 M-25,-2.5 q1.6,2.5 0,5 M-30,-1.8 q1.2,1.8 0,3.6"
-          stroke="#E6F1FF" stroke-opacity="0.4" stroke-width="0.8" fill="none"/>
-      </g>
-      <path d="M2,-6 L10,-12" stroke="#F5C9A8" stroke-width="2.4" stroke-linecap="round">
-        <animate attributeName="d" values="M2,-6 L10,-12;M2,-6 L1,-14;M2,-6 L10,-12" dur="0.9s" repeatCount="indefinite"/>
+SKIN, HAIR, HAIR_DARK = "#F7CDB0", "#C4A1FF", "#9D7CF0"
+TAIL_COLORS = ["#2DD4BF", "#7AA2F7", "#BB9AF7"]
+FIN = "#5EF2FF"
+MERMAID_SCALE = 1.25
+
+
+def blend(colors, t):
+    """Color en la posición t (0..1) de un degradado de varios colores."""
+    t = min(max(t, 0.0), 1.0) * (len(colors) - 1)
+    i = min(int(t), len(colors) - 2)
+    a, b = colors[i], colors[i + 1]
+    f = t - i
+    return "#" + "".join(
+        f"{round(int(a[k:k + 2], 16) * (1 - f) + int(b[k:k + 2], 16) * f):02X}" for k in (1, 3, 5))
+
+
+def mermaid(dur, home, speed):
+    """La sirena vista desde arriba, mirando hacia +x. Cada parte del cuerpo sigue
+    la misma ruta que la cabeza con un pequeño retraso, así el cuerpo se curva en
+    los giros como el de un pez de verdad, y además ondula al nadar."""
+
+    def part(dist, body, wiggle=0.0, phase=0.0):
+        lag = dist * MERMAID_SCALE / speed
+        body = f'<g transform="scale({MERMAID_SCALE})">{body}</g>'
+        motion = (f'<animateMotion dur="{dur:.2f}s" begin="{lag - dur:.3f}s" repeatCount="indefinite" '
+                  f'rotate="auto" calcMode="linear" keyPoints="0;1;1" keyTimes="0;{home:.4f};1">'
+                  f'<mpath href="#route" xlink:href="#route"/></animateMotion>')
+        if wiggle:
+            body = (f'<g><animateTransform attributeName="transform" type="translate" '
+                    f'values="0,{-wiggle:.2f};0,{wiggle:.2f};0,{-wiggle:.2f}" dur="0.9s" '
+                    f'begin="-{phase:.2f}s" repeatCount="indefinite"/>{body}</g>')
+        return f"<g>{motion}{body}</g>"
+
+    parts = []
+    segments = 10
+    tail_start, gap = 19.0, 3.4
+    fin_dist = tail_start + segments * gap
+    parts.append(part(fin_dist, f"""
+      <path d="M1,0 C-3,-2 -7,-7 -14,-9.5 C-11.5,-4.5 -9.5,-1.8 -8.5,0 C-9.5,1.8 -11.5,4.5 -14,9.5 C-7,7 -3,2 1,0Z"
+        fill="{FIN}" fill-opacity="0.55" stroke="#BFFAFF" stroke-width="0.5" stroke-opacity="0.9">
+        <animateTransform attributeName="transform" type="rotate" values="-16;16;-16" dur="0.9s"
+          begin="-{segments * 0.09:.2f}s" repeatCount="indefinite"/>
+      </path>""", wiggle=0.3 + segments * 0.17, phase=segments * 0.09))
+    for i in reversed(range(segments)):
+        ry = 3.3 - i * 0.22
+        color = blend(TAIL_COLORS, i / (segments - 1))
+        parts.append(part(
+            tail_start + i * gap,
+            f'<ellipse rx="4.4" ry="{ry:.2f}" fill="{color}"/>'
+            f'<ellipse cx="0.6" cy="{-ry * 0.4:.2f}" rx="1.3" ry="{ry * 0.22:.2f}" fill="#FFFFFF" fill-opacity="0.28"/>',
+            wiggle=0.3 + i * 0.17, phase=i * 0.09))
+    parts.append(part(0, f"""
+      <path d="M-9,-2.6 C-6,-5 -2,-7 1,-8.5" stroke="{SKIN}" stroke-width="1.5" stroke-linecap="round" fill="none">
+        <animate attributeName="d" dur="0.9s" repeatCount="indefinite"
+          values="M-9,-2.6 C-6,-5 -2,-7 1,-8.5;M-9,-2.6 C-8,-6 -7,-8 -6,-10;M-9,-2.6 C-6,-5 -2,-7 1,-8.5"/>
       </path>
-      <path d="M2,6 L10,12" stroke="#F5C9A8" stroke-width="2.4" stroke-linecap="round">
-        <animate attributeName="d" values="M2,6 L10,12;M2,6 L1,14;M2,6 L10,12" dur="0.9s" repeatCount="indefinite"/>
+      <path d="M-9,2.6 C-6,5 -2,7 1,8.5" stroke="{SKIN}" stroke-width="1.5" stroke-linecap="round" fill="none">
+        <animate attributeName="d" dur="0.9s" repeatCount="indefinite"
+          values="M-9,2.6 C-6,5 -2,7 1,8.5;M-9,2.6 C-8,6 -7,8 -6,10;M-9,2.6 C-6,5 -2,7 1,8.5"/>
       </path>
-      <path d="M-8,-5 C-4,-7.5 3,-7.5 4,-4 C5,-1.5 5,1.5 4,4 C3,7.5 -4,7.5 -8,5Z" fill="#F5C9A8"/>
-      <path d="M5,-3 C0,-3.5 -8,-2.5 -16,-1.5 C-12,0 -12,0 -16,1.5 C-8,2.5 0,3.5 5,3Z" fill="#BB9AF7">
-        <animate attributeName="d" dur="1.2s" repeatCount="indefinite"
-          values="M5,-3 C0,-3.5 -8,-2.5 -16,-1.5 C-12,0 -12,0 -16,1.5 C-8,2.5 0,3.5 5,3Z;
-                  M5,-3 C0,-3.5 -8,-4 -17,-4 C-13,-2 -13,-1 -17,0 C-8,1.5 0,3.5 5,3Z;
-                  M5,-3 C0,-3.5 -8,-2.5 -16,-1.5 C-12,0 -12,0 -16,1.5 C-8,2.5 0,3.5 5,3Z"/>
-      </path>
-      <circle cx="7.5" cy="0" r="4.6" fill="#9D7CF0"/>
-      <path d="M7.5,-5.6 l0.8,1.4 1.6,0.1 -1.2,1 0.4,1.6 -1.6,-0.9 -1.5,0.9 0.4,-1.6 -1.2,-1 1.6,-0.1Z" fill="#FFD166"/>
-    </g>"""
+      <path d="M-20,-2.6 C-16,-3.6 -12,-3.6 -9,-3.1 C-7,-2.6 -6.5,-1 -6.5,0 C-6.5,1 -7,2.6 -9,3.1 C-12,3.6 -16,3.6 -20,2.6 C-21,1 -21,-1 -20,-2.6Z"
+        fill="{SKIN}"/>
+      <circle cx="-3" cy="0" r="3.4" fill="{HAIR}"/>
+      <path d="M-3,-3.4 C-1,-3 0.4,-1.6 0.4,0 C0.4,1.6 -1,3 -3,3.4" stroke="{HAIR_DARK}" stroke-width="0.6" fill="none"/>
+      <path d="M-2.4,-4.4 l0.6,1 1.2,0.1 -0.9,0.75 0.3,1.2 -1.2,-0.7 -1.1,0.7 0.3,-1.2 -0.9,-0.75 1.2,-0.1Z" fill="#FFD166"/>"""))
+    for k, (dist, ry) in enumerate([(7.5, 2.0), (11.5, 1.6), (15.5, 1.1)]):
+        parts.append(part(
+            dist,
+            f'<ellipse rx="3.4" ry="{ry}" fill="{HAIR if k % 2 == 0 else HAIR_DARK}" fill-opacity="0.95"/>',
+            wiggle=0.25 + k * 0.2, phase=0.3 + k * 0.12))
+    return "\n  ".join(parts)
 
 
 def shell(x, y):
+    base = (x, y + 11)
+    radius, lobes = 19.0, 7
+    start, end = math.radians(168), math.radians(12)
+    angles = [start + (end - start) * k / lobes for k in range(lobes + 1)]
+
+    def at(a, r):
+        return base[0] + r * math.cos(a), base[1] - r * math.sin(a)
+
+    p0 = at(angles[0], radius)
+    d = f"M{base[0] - 3:.1f},{base[1]:.1f} L{p0[0]:.1f},{p0[1]:.1f}"
+    for a, b in zip(angles, angles[1:]):
+        cx, cy = at((a + b) / 2, radius + 4)
+        px, py = at(b, radius)
+        d += f" Q{cx:.1f},{cy:.1f} {px:.1f},{py:.1f}"
+    d += f" L{base[0] + 3:.1f},{base[1]:.1f} Z"
     ridges = "".join(
-        f'<path d="M{x:.1f},{y + 8:.1f} L{x + 17 * math.cos(a):.1f},{y + 8 - 17 * math.sin(a):.1f}" '
-        f'stroke="#C9739A" stroke-width="1"/>'
-        for a in [math.pi * k / 6 for k in range(1, 6)])
+        f'<path d="M{base[0]:.1f},{base[1]:.1f} L{at(a, radius - 1.5)[0]:.1f},{at(a, radius - 1.5)[1]:.1f}" '
+        f'stroke="#E37BA6" stroke-width="0.9" stroke-opacity="0.7"/>'
+        for a in angles[1:-1])
     return f"""
   <g>
-    <circle cx="{x}" cy="{y}" r="24" fill="none" stroke="#5EF2FF" stroke-opacity="0.25" stroke-dasharray="3 4">
-      <animateTransform attributeName="transform" type="rotate" from="0 {x} {y}" to="360 {x} {y}" dur="20s" repeatCount="indefinite"/>
+    <circle cx="{x}" cy="{y}" r="30" fill="url(#glow)">
+      <animate attributeName="opacity" values="0.5;1;0.5" dur="4s" repeatCount="indefinite"/>
     </circle>
-    <path d="M{x - 18},{y + 8} A18,18 0 0 1 {x + 18},{y + 8} Z" fill="#F7A8C4"/>
+    <path d="{d}" fill="url(#shellfill)" stroke="#F48FB1" stroke-width="0.8" stroke-linejoin="round"/>
     {ridges}
-    <rect x="{x - 5}" y="{y + 7}" width="10" height="5" rx="2" fill="#E58FB2"/>
-    <text x="{x}" y="{y + 38}" fill="{MUTED}" font-family="{FONT}" font-size="11" text-anchor="middle">concha</text>
+    <path d="M{x - 8},{base[1]} L{x + 8},{base[1]} L{x + 4.5},{base[1] + 5} L{x - 4.5},{base[1] + 5} Z"
+      fill="#F48FB1" stroke="#E37BA6" stroke-width="0.6" stroke-linejoin="round"/>
+    <circle cx="{x}" cy="{base[1] - 3}" r="3.2" fill="url(#pearl)">
+      <animate attributeName="r" values="3.2;3.6;3.2" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    <text x="{x}" y="{y + 40}" fill="{MUTED}" font-family="{FONT}" font-size="11" text-anchor="middle">concha</text>
   </g>"""
 
 
@@ -227,14 +288,21 @@ def build(cal):
         f'<rect x="{legend_x + 40 + i * 16}" y="{H - 34}" width="{CELL}" height="{CELL}" rx="2.5" fill="{col}"/>'
         for i, col in enumerate(LEVELS.values()))
 
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}">
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 {W} {H}" width="{W}" height="{H}">
   <defs>
     <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="{BG_TOP}"/><stop offset="1" stop-color="{BG_BOTTOM}"/>
     </linearGradient>
-    <linearGradient id="tail" x1="1" y1="0" x2="0" y2="0">
-      <stop offset="0" stop-color="#2DD4BF"/><stop offset="0.6" stop-color="#7AA2F7"/><stop offset="1" stop-color="#BB9AF7"/>
-    </linearGradient>
+    <radialGradient id="shellfill" cx="0.5" cy="0.9" r="0.9">
+      <stop offset="0" stop-color="#FFE3EE"/><stop offset="0.6" stop-color="#F9B8D2"/><stop offset="1" stop-color="#F48FB1"/>
+    </radialGradient>
+    <radialGradient id="pearl" cx="0.35" cy="0.35" r="0.7">
+      <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#CFE8FF"/>
+    </radialGradient>
+    <radialGradient id="glow">
+      <stop offset="0" stop-color="#5EF2FF" stop-opacity="0.22"/><stop offset="1" stop-color="#5EF2FF" stop-opacity="0"/>
+    </radialGradient>
+    <path id="route" d="{path}" fill="none"/>
     <clipPath id="panel"><rect x="1" y="1" width="{W - 2}" height="{H - 2}" rx="14"/></clipPath>
   </defs>
   <rect x="1" y="1" width="{W - 2}" height="{H - 2}" rx="14" fill="url(#sea)" stroke="{BORDER}"/>
@@ -245,15 +313,11 @@ def build(cal):
   {"".join(months)}
   {"".join(rects)}
   {"".join(pops)}
-  {shell(*NEST)}
   <text x="{legend_x}" y="{H - 24}" fill="{MUTED}" font-family="{FONT}" font-size="11">Menos</text>
   {legend}
   <text x="{legend_x + 40 + 5 * 16 + 4}" y="{H - 24}" fill="{MUTED}" font-family="{FONT}" font-size="11">Más</text>
-  <g>
-    <animateMotion dur="{dur:.2f}s" repeatCount="indefinite" rotate="auto" calcMode="linear"
-      keyPoints="0;1;1" keyTimes="0;{frac(home)};1" path="{path}"/>
-    {mermaid()}
-  </g>
+  {mermaid(dur, home, total / travel)}
+  {shell(*NEST)}
   </g>
 </svg>
 """

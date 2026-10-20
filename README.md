@@ -44,10 +44,4 @@
   <img src="./assets/mermaid-contrib.svg" width="100%" alt="Calendario de contribuciones: una sirena sale de su concha y se come los días de menos a más contribuciones." />
 </p>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HemsyCA/HemsyCA/output/github-snake-dark.svg" />
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/HemsyCA/HemsyCA/output/github-snake.svg" />
-  <img alt="Serpiente de contribuciones" src="https://raw.githubusercontent.com/HemsyCA/HemsyCA/output/github-snake.svg" />
-</picture>
-
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:bb9af7,100:7aa2f7&height=120&section=footer" width="100%"/>
