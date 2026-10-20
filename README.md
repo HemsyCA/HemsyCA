@@ -4,5 +4,4 @@
 
 - 🔭 Ahora mismo aprendiendo
 - 🌱 Aprendiendo: Git, desarrollo de software, análisis de datos
-- 📫 Linkedin: www.linkedin.com/in/hemsy-cardenas
 - 📫 Correo: hcardenasarz@gmail.com
