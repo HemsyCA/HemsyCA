@@ -106,7 +106,7 @@ def catmull_rom(points, step=5.0):
 SKIN, HAIR, HAIR_DARK = "#F7CDB0", "#C4A1FF", "#9D7CF0"
 TAIL_COLORS = ["#2DD4BF", "#7AA2F7", "#BB9AF7"]
 FIN = "#5EF2FF"
-MERMAID_SCALE = 1.25
+MERMAID_SCALE = 1.6
 
 
 def blend(colors, t):
@@ -132,7 +132,7 @@ def mermaid(dur, home, speed):
                   f'<mpath href="#route" xlink:href="#route"/></animateMotion>')
         if wiggle:
             body = (f'<g><animateTransform attributeName="transform" type="translate" '
-                    f'values="0,{-wiggle:.2f};0,{wiggle:.2f};0,{-wiggle:.2f}" dur="0.9s" '
+                    f'values="0,{-wiggle:.2f};0,{wiggle:.2f};0,{-wiggle:.2f}" dur="1.2s" '
                     f'begin="-{phase:.2f}s" repeatCount="indefinite"/>{body}</g>')
         return f"<g>{motion}{body}</g>"
 
@@ -143,7 +143,7 @@ def mermaid(dur, home, speed):
     parts.append(part(fin_dist, f"""
       <path d="M1,0 C-3,-2 -7,-7 -14,-9.5 C-11.5,-4.5 -9.5,-1.8 -8.5,0 C-9.5,1.8 -11.5,4.5 -14,9.5 C-7,7 -3,2 1,0Z"
         fill="{FIN}" fill-opacity="0.55" stroke="#BFFAFF" stroke-width="0.5" stroke-opacity="0.9">
-        <animateTransform attributeName="transform" type="rotate" values="-16;16;-16" dur="0.9s"
+        <animateTransform attributeName="transform" type="rotate" values="-16;16;-16" dur="1.2s"
           begin="-{segments * 0.09:.2f}s" repeatCount="indefinite"/>
       </path>""", wiggle=0.3 + segments * 0.17, phase=segments * 0.09))
     for i in reversed(range(segments)):
@@ -156,11 +156,11 @@ def mermaid(dur, home, speed):
             wiggle=0.3 + i * 0.17, phase=i * 0.09))
     parts.append(part(0, f"""
       <path d="M-9,-2.6 C-6,-5 -2,-7 1,-8.5" stroke="{SKIN}" stroke-width="1.5" stroke-linecap="round" fill="none">
-        <animate attributeName="d" dur="0.9s" repeatCount="indefinite"
+        <animate attributeName="d" dur="1.2s" repeatCount="indefinite"
           values="M-9,-2.6 C-6,-5 -2,-7 1,-8.5;M-9,-2.6 C-8,-6 -7,-8 -6,-10;M-9,-2.6 C-6,-5 -2,-7 1,-8.5"/>
       </path>
       <path d="M-9,2.6 C-6,5 -2,7 1,8.5" stroke="{SKIN}" stroke-width="1.5" stroke-linecap="round" fill="none">
-        <animate attributeName="d" dur="0.9s" repeatCount="indefinite"
+        <animate attributeName="d" dur="1.2s" repeatCount="indefinite"
           values="M-9,2.6 C-6,5 -2,7 1,8.5;M-9,2.6 C-8,6 -7,8 -6,10;M-9,2.6 C-6,5 -2,7 1,8.5"/>
       </path>
       <path d="M-20,-2.6 C-16,-3.6 -12,-3.6 -9,-3.1 C-7,-2.6 -6.5,-1 -6.5,0 C-6.5,1 -7,2.6 -9,3.1 C-12,3.6 -16,3.6 -20,2.6 C-21,1 -21,-1 -20,-2.6Z"
@@ -245,7 +245,7 @@ def build(cal):
     for a, b in zip(samples, samples[1:]):
         lengths.append(lengths[-1] + math.dist(a, b))
     total = lengths[-1]
-    travel = min(max(total / 260, 12), 45)
+    travel = min(max(total / 170, 18), 70)
     dur = travel + REST
     home = travel / dur
     regrow = home + 0.6 / dur
