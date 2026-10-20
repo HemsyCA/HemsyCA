@@ -38,7 +38,11 @@
   <img src="https://github-readme-stats.vercel.app/api/top-langs/?username=HemsyCA&layout=compact&theme=tokyonight&hide_border=true" height="150" />
 </p>
 
-### 🐍 Mis contribuciones
+### 🧜‍♀️ Mis contribuciones
+
+<p align="center">
+  <img src="./assets/mermaid-contrib.svg" width="100%" alt="Calendario de contribuciones: una sirena sale de su concha y se come los días de menos a más contribuciones." />
+</p>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HemsyCA/HemsyCA/output/github-snake-dark.svg" />
