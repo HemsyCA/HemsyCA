@@ -4,6 +4,10 @@
   <picture><img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=24&pause=1000&color=7AA2F7&center=true&vCenter=true&width=600&lines=Hola%2C+soy+Hemsy+%F0%9F%91%8B;Estudiante+de+Ingenier%C3%ADa+de+Sistemas;Software+%7C+IA+%7C+An%C3%A1lisis+de+datos" alt="Typing SVG" /></picture>
 </p>
 
+<p align="center">
+  <picture><img src="https://visitor-badge.laobi.icu/badge?page_id=HemsyCA.HemsyCA&left_text=Vistas%20del%20perfil&left_color=%231a1b26&right_color=%23bb9af7" alt="Vistas del perfil" /></picture>
+</p>
+
 ### ❁ ❁ <picture><img src="https://raw.githubusercontent.com/Kyle-Lobo/Kyle-Lobo/main/wave.gif" width="28px"></picture>
 
 ➺ Estudiante de Ingeniería de sistemas, aprendiendo desarrollo de software, inteligencia artificial y análisis de datos.
