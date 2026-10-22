@@ -80,27 +80,39 @@ def demo_calendar():
     return {"totalContributions": total, "weeks": weeks}
 
 
-def catmull_rom(points, step=5.0):
-    """Curva suave que pasa por todos los puntos. Devuelve las muestras y, para
-    cada punto original, el índice de la muestra donde se llega a él."""
-    samples, arrivals = [points[0]], [0]
-    for i in range(len(points) - 1):
-        p0 = points[max(i - 1, 0)]
-        p1, p2 = points[i], points[i + 1]
-        p3 = points[min(i + 2, len(points) - 1)]
-        n = max(3, int(math.dist(p1, p2) / step))
-        for s in range(1, n + 1):
-            t = s / n
-            t2, t3 = t * t, t * t * t
-            x = 0.5 * (2 * p1[0] + (-p0[0] + p2[0]) * t
-                       + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2
-                       + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3)
-            y = 0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * t
-                       + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2
-                       + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)
-            samples.append((x, min(max(y, 40.0), H - 30.0)))
-        arrivals.append(len(samples) - 1)
-    return samples, arrivals
+def swim(points, step=2.0, keep_every=3):
+    """Simula el nado: la sirena tiene una dirección y gira hacia el siguiente
+    punto con un giro máximo por paso, así cada cambio de dirección es un arco
+    suave y nunca una esquina. Devuelve las muestras de la ruta y, para cada
+    punto original, el índice de la muestra donde se llega a él."""
+    x, y = points[0]
+    heading = 0.0
+    raw, arrivals = [(x, y)], [0]
+    for target in points[1:]:
+        for _ in range(5000):
+            dx, dy = target[0] - x, target[1] - y
+            dist = math.hypot(dx, dy)
+            if dist <= step:
+                break
+            diff = (math.atan2(dy, dx) - heading + math.pi) % (2 * math.pi) - math.pi
+            # cerca del objetivo gira más fuerte para no quedarse dando vueltas
+            max_turn = 0.09 + 0.5 * max(0.0, 1 - dist / 40)
+            heading += max(-max_turn, min(max_turn, diff))
+            x = min(max(x + step * math.cos(heading), 20.0), W - 20.0)
+            y = min(max(y + step * math.sin(heading), 40.0), H - 30.0)
+            raw.append((x, y))
+        x, y = target
+        raw.append((x, y))
+        arrivals.append(len(raw) - 1)
+
+    # menos puntos para que el SVG pese menos, conservando las llegadas
+    keep = set(arrivals) | set(range(0, len(raw), keep_every))
+    index, samples = {}, []
+    for i, p in enumerate(raw):
+        if i in keep:
+            index[i] = len(samples)
+            samples.append(p)
+    return samples, [index[a] for a in arrivals]
 
 
 SKIN, HAIR, HAIR_DARK = "#F7CDB0", "#C4A1FF", "#9D7CF0"
@@ -137,23 +149,26 @@ def mermaid(dur, home, speed):
         return f"<g>{motion}{body}</g>"
 
     parts = []
-    segments = 10
-    tail_start, gap = 19.0, 3.4
+    segments = 13
+    tail_start, gap = 18.5, 2.8
     fin_dist = tail_start + segments * gap
     parts.append(part(fin_dist, f"""
       <path d="M1,0 C-3,-2 -7,-7 -14,-9.5 C-11.5,-4.5 -9.5,-1.8 -8.5,0 C-9.5,1.8 -11.5,4.5 -14,9.5 C-7,7 -3,2 1,0Z"
         fill="{FIN}" fill-opacity="0.55" stroke="#BFFAFF" stroke-width="0.5" stroke-opacity="0.9">
         <animateTransform attributeName="transform" type="rotate" values="-16;16;-16" dur="1.2s"
-          begin="-{segments * 0.09:.2f}s" repeatCount="indefinite"/>
-      </path>""", wiggle=0.3 + segments * 0.17, phase=segments * 0.09))
+          begin="-{segments * 0.07:.2f}s" repeatCount="indefinite"/>
+      </path>""", wiggle=0.3 + segments * 0.13, phase=segments * 0.07))
     for i in reversed(range(segments)):
-        ry = 3.3 - i * 0.22
+        ry = 3.3 - i * 0.16
         color = blend(TAIL_COLORS, i / (segments - 1))
         parts.append(part(
             tail_start + i * gap,
             f'<ellipse rx="4.4" ry="{ry:.2f}" fill="{color}"/>'
             f'<ellipse cx="0.6" cy="{-ry * 0.4:.2f}" rx="1.3" ry="{ry * 0.22:.2f}" fill="#FFFFFF" fill-opacity="0.28"/>',
-            wiggle=0.3 + i * 0.17, phase=i * 0.09))
+            wiggle=0.3 + i * 0.13, phase=i * 0.07))
+    # la cintura también va por partes, así no se separa de la cola en los giros
+    for dist, ry, wiggle in [(15.0, 3.0, 0.2), (11.5, 3.2, 0.1)]:
+        parts.append(part(dist, f'<ellipse rx="3.8" ry="{ry}" fill="{SKIN}"/>', wiggle=wiggle))
     parts.append(part(0, f"""
       <path d="M-9,-2.6 C-6,-5 -2,-7 1,-8.5" stroke="{SKIN}" stroke-width="1.5" stroke-linecap="round" fill="none">
         <animate attributeName="d" dur="1.2s" repeatCount="indefinite"
@@ -163,7 +178,7 @@ def mermaid(dur, home, speed):
         <animate attributeName="d" dur="1.2s" repeatCount="indefinite"
           values="M-9,2.6 C-6,5 -2,7 1,8.5;M-9,2.6 C-8,6 -7,8 -6,10;M-9,2.6 C-6,5 -2,7 1,8.5"/>
       </path>
-      <path d="M-20,-2.6 C-16,-3.6 -12,-3.6 -9,-3.1 C-7,-2.6 -6.5,-1 -6.5,0 C-6.5,1 -7,2.6 -9,3.1 C-12,3.6 -16,3.6 -20,2.6 C-21,1 -21,-1 -20,-2.6Z"
+      <path d="M-14,-3.1 C-11,-3.6 -9,-3.4 -8,-3 C-6.8,-2.4 -6.5,-1 -6.5,0 C-6.5,1 -6.8,2.4 -8,3 C-9,3.4 -11,3.6 -14,3.1 C-15.2,1.5 -15.2,-1.5 -14,-3.1Z"
         fill="{SKIN}"/>
       <circle cx="-3" cy="0" r="3.4" fill="{HAIR}"/>
       <path d="M-3,-3.4 C-1,-3 0.4,-1.6 0.4,0 C0.4,1.6 -1,3 -3,3.4" stroke="{HAIR_DARK}" stroke-width="0.6" fill="none"/>
@@ -239,7 +254,7 @@ def build(cal):
     route = [NEST] + [(c["cx"], c["cy"]) for c in food] + [NEST]
     if len(route) == 2:  # sin contribuciones: da un paseo y vuelve
         route = [NEST, (W / 2, GY + 3 * PITCH), NEST]
-    samples, arrivals = catmull_rom(route)
+    samples, arrivals = swim(route)
 
     lengths = [0.0]
     for a, b in zip(samples, samples[1:]):
