@@ -8,7 +8,7 @@
   <picture><img src="https://visitor-badge.laobi.icu/badge?page_id=HemsyCA.HemsyCA&left_text=Vistas%20del%20perfil&left_color=%231a1b26&right_color=%23bb9af7" alt="Vistas del perfil" /></picture>
 </p>
 
-### ❁ ❁ <picture><img src="https://raw.githubusercontent.com/Kyle-Lobo/Kyle-Lobo/main/wave.gif" width="28px"></picture>
+### ❁ ❁ 
 
 ➺ Estudiante de Ingeniería de sistemas, aprendiendo desarrollo de software, inteligencia artificial y análisis de datos.
 
