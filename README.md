@@ -32,12 +32,7 @@
 ### 📊 Estadísticas
 
 <p align="center">
-  <picture><img src="https://github-readme-stats.vercel.app/api?username=HemsyCA&show_icons=true&theme=tokyonight&hide_border=true" height="150" /></picture>
   <picture><img src="https://streak-stats.demolab.com?user=HemsyCA&theme=tokyonight&hide_border=true" height="150" /></picture>
-</p>
-
-<p align="center">
-  <picture><img src="https://github-readme-stats.vercel.app/api/top-langs/?username=HemsyCA&layout=compact&theme=tokyonight&hide_border=true" height="150" /></picture>
 </p>
 
 ### 🧜‍♀️ Mis contribuciones
