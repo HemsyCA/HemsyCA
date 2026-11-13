@@ -7,6 +7,7 @@ Se ejecuta todos los días desde .github/workflows/mermaid.yml. Para probarlo:
     GITHUB_TOKEN=<token> python tools/mermaid_contrib.py
     python tools/mermaid_contrib.py --demo     # datos de ejemplo, sin token
 """
+import bisect
 import datetime as dt
 import json
 import math
@@ -116,79 +117,115 @@ def swim(points, step=2.0, keep_every=3):
 
 
 SKIN, HAIR, HAIR_DARK = "#F7CDB0", "#C4A1FF", "#9D7CF0"
-TAIL_COLORS = ["#2DD4BF", "#7AA2F7", "#BB9AF7"]
-FIN = "#5EF2FF"
+TAIL, TAIL_SHINE, FIN = "#6FA8F5", "#D2C2FF", "#5EF2FF"
 MERMAID_SCALE = 1.6
+FPS = 8          # cuadros por segundo; el navegador interpola entre ellos
+SWIM = 1.2       # segundos que dura un aleteo
+
+# Ancho (medio) del cuerpo según la distancia desde la cabeza, en unidades de dibujo
+TORSO = [(6, 2.4), (7.5, 3.4), (9.5, 3.6), (12, 3.3), (14.5, 3.0), (17, 3.0)]
+TAIL_SHAPE = [(15, 3.1), (19, 3.4), (24, 3.2), (30, 2.7), (36, 2.1), (42, 1.6), (47, 1.2), (52, 0.9)]
+HAIR_SHAPE = [(4, 3.4), (8, 2.4), (12, 2.0), (16, 1.5), (21, 0.5)]
+HEAD_AT, HEAD_R = 3.5, 3.6
 
 
-def blend(colors, t):
-    """Color en la posición t (0..1) de un degradado de varios colores."""
-    t = min(max(t, 0.0), 1.0) * (len(colors) - 1)
-    i = min(int(t), len(colors) - 2)
-    a, b = colors[i], colors[i + 1]
-    f = t - i
-    return "#" + "".join(
-        f"{round(int(a[k:k + 2], 16) * (1 - f) + int(b[k:k + 2], 16) * f):02X}" for k in (1, 3, 5))
+def mermaid(samples, lengths, travel, dur):
+    """La sirena vista desde arriba. Para que el cuerpo nunca se separe, cada
+    cuadro de la animación se calcula aquí completo: la columna sigue la ruta que
+    dejó la cabeza y el contorno se dibuja alrededor. Todas las piezas usan los
+    mismos cuadros y el mismo tiempo, así que se mueven siempre juntas."""
+    S = MERMAID_SCALE
+    total = lengths[-1]
+    speed = total / travel
+
+    def point_at(s):
+        s = min(max(s, 0.0), total)
+        i = min(max(bisect.bisect_right(lengths, s) - 1, 0), len(samples) - 2)
+        span = lengths[i + 1] - lengths[i]
+        f = (s - lengths[i]) / span if span else 0.0
+        (x0, y0), (x1, y1) = samples[i], samples[i + 1]
+        return x0 + (x1 - x0) * f, y0 + (y1 - y0) * f
+
+    def frame(t):
+        head = t * speed  # sigue "avanzando" al llegar a casa, así entra entera en la concha
+        phase = 2 * math.pi * t / SWIM
+
+        def spine(d):
+            """Punto de la columna a d unidades de la cabeza y su dirección."""
+            s = min(head - d * S, total)
+            (ax, ay), (bx, by) = point_at(s - 3), point_at(s + 3)
+            dx, dy = bx - ax, by - ay
+            norm = math.hypot(dx, dy)
+            tx, ty = (dx / norm, dy / norm) if norm > 1e-6 else (1.0, 0.0)
+            x, y = point_at(s)
+            wave = min(2.6, max(0.0, 0.06 * (d - 10))) * math.sin(phase - d / 9) * S
+            return x - ty * wave, y + tx * wave, tx, ty
+
+        def outline(shape, extra_wave=0.0):
+            left, right = [], []
+            for d, w in shape:
+                x, y, tx, ty = spine(d)
+                if extra_wave:
+                    off = extra_wave * math.sin(phase * 1.3 - d / 4) * S
+                    x, y = x - ty * off, y + tx * off
+                left.append((x - ty * w * S, y + tx * w * S))
+                right.append((x + ty * w * S, y - tx * w * S))
+            return poly(left + right[::-1])
+
+        def local(base, fwd, lat):
+            x, y, tx, ty = base
+            return x + (tx * fwd - ty * lat) * S, y + (ty * fwd + tx * lat) * S
+
+        end = spine(TAIL_SHAPE[-1][0])
+        flap = 0.28 * math.sin(phase - TAIL_SHAPE[-1][0] / 9)
+        fx, fy, tx, ty = end
+        c, s_ = math.cos(flap), math.sin(flap)
+        fin_base = (fx, fy, tx * c - ty * s_, ty * c + tx * s_)
+        fin = poly([local(fin_base, -b, l) for b, l in
+                    [(0, 0), (4, -2.5), (13, -9.5), (8.5, 0), (13, 9.5), (4, 2.5)]])
+
+        shine = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y, _, _ in (spine(d) for d in range(18, 49, 5)))
+
+        shoulder = spine(8.5)
+        arms = ""
+        for side in (-1, 1):
+            a = 0.6 + 0.9 * (0.5 + 0.5 * math.sin(phase))
+            sx, sy = local(shoulder, 0, 3.3 * side)
+            hx, hy = local(shoulder, 8.5 * math.cos(a), (3.3 + 8.5 * math.sin(a)) * side)
+            arms += f"M{sx:.1f},{sy:.1f} L{hx:.1f},{hy:.1f} "
+
+        hc = spine(HEAD_AT)
+        head_ring = poly([local(hc, HEAD_R * math.cos(k * math.pi / 5), HEAD_R * math.sin(k * math.pi / 5))
+                          for k in range(10)])
+        return {
+            "fin": fin,
+            "tail": outline(TAIL_SHAPE),
+            "shine": shine,
+            "arms": arms.strip(),
+            "torso": outline(TORSO),
+            "hair": head_ring + " " + outline(HAIR_SHAPE, extra_wave=0.5),
+        }
+
+    count = max(1, round(dur * FPS))
+    frames = [frame(i * dur / count) for i in range(count + 1)]
+
+    def piece(name, attrs):
+        values = ";".join(f[name] for f in frames)
+        return (f'<path d="{frames[0][name]}" {attrs}>'
+                f'<animate attributeName="d" dur="{dur:.2f}s" repeatCount="indefinite" values="{values}"/></path>')
+
+    return "\n  ".join([
+        piece("fin", f'fill="{FIN}" fill-opacity="0.6" stroke="#BFFAFF" stroke-width="0.8" stroke-linejoin="round"'),
+        piece("tail", f'fill="{TAIL}"'),
+        piece("shine", f'fill="none" stroke="{TAIL_SHINE}" stroke-opacity="0.45" stroke-width="{1.4 * MERMAID_SCALE:.1f}" stroke-linecap="round"'),
+        piece("arms", f'fill="none" stroke="{SKIN}" stroke-width="{1.5 * MERMAID_SCALE:.1f}" stroke-linecap="round"'),
+        piece("torso", f'fill="{SKIN}"'),
+        piece("hair", f'fill="{HAIR}" stroke="{HAIR_DARK}" stroke-width="0.6"'),
+    ])
 
 
-def mermaid(dur, home, speed):
-    """La sirena vista desde arriba, mirando hacia +x. Cada parte del cuerpo sigue
-    la misma ruta que la cabeza con un pequeño retraso, así el cuerpo se curva en
-    los giros como el de un pez de verdad, y además ondula al nadar."""
-
-    def part(dist, body, wiggle=0.0, phase=0.0):
-        lag = dist * MERMAID_SCALE / speed
-        body = f'<g transform="scale({MERMAID_SCALE})">{body}</g>'
-        motion = (f'<animateMotion dur="{dur:.2f}s" begin="{lag - dur:.3f}s" repeatCount="indefinite" '
-                  f'rotate="auto" calcMode="linear" keyPoints="0;1;1" keyTimes="0;{home:.4f};1">'
-                  f'<mpath href="#route" xlink:href="#route"/></animateMotion>')
-        if wiggle:
-            body = (f'<g><animateTransform attributeName="transform" type="translate" '
-                    f'values="0,{-wiggle:.2f};0,{wiggle:.2f};0,{-wiggle:.2f}" dur="1.2s" '
-                    f'begin="-{phase:.2f}s" repeatCount="indefinite"/>{body}</g>')
-        return f"<g>{motion}{body}</g>"
-
-    parts = []
-    segments = 13
-    tail_start, gap = 18.5, 2.8
-    fin_dist = tail_start + segments * gap
-    parts.append(part(fin_dist, f"""
-      <path d="M1,0 C-3,-2 -7,-7 -14,-9.5 C-11.5,-4.5 -9.5,-1.8 -8.5,0 C-9.5,1.8 -11.5,4.5 -14,9.5 C-7,7 -3,2 1,0Z"
-        fill="{FIN}" fill-opacity="0.55" stroke="#BFFAFF" stroke-width="0.5" stroke-opacity="0.9">
-        <animateTransform attributeName="transform" type="rotate" values="-16;16;-16" dur="1.2s"
-          begin="-{segments * 0.07:.2f}s" repeatCount="indefinite"/>
-      </path>""", wiggle=0.3 + segments * 0.13, phase=segments * 0.07))
-    for i in reversed(range(segments)):
-        ry = 3.3 - i * 0.16
-        color = blend(TAIL_COLORS, i / (segments - 1))
-        parts.append(part(
-            tail_start + i * gap,
-            f'<ellipse rx="4.4" ry="{ry:.2f}" fill="{color}"/>'
-            f'<ellipse cx="0.6" cy="{-ry * 0.4:.2f}" rx="1.3" ry="{ry * 0.22:.2f}" fill="#FFFFFF" fill-opacity="0.28"/>',
-            wiggle=0.3 + i * 0.13, phase=i * 0.07))
-    # la cintura también va por partes, así no se separa de la cola en los giros
-    for dist, ry, wiggle in [(15.0, 3.0, 0.2), (11.5, 3.2, 0.1)]:
-        parts.append(part(dist, f'<ellipse rx="3.8" ry="{ry}" fill="{SKIN}"/>', wiggle=wiggle))
-    parts.append(part(0, f"""
-      <path d="M-9,-2.6 C-6,-5 -2,-7 1,-8.5" stroke="{SKIN}" stroke-width="1.5" stroke-linecap="round" fill="none">
-        <animate attributeName="d" dur="1.2s" repeatCount="indefinite"
-          values="M-9,-2.6 C-6,-5 -2,-7 1,-8.5;M-9,-2.6 C-8,-6 -7,-8 -6,-10;M-9,-2.6 C-6,-5 -2,-7 1,-8.5"/>
-      </path>
-      <path d="M-9,2.6 C-6,5 -2,7 1,8.5" stroke="{SKIN}" stroke-width="1.5" stroke-linecap="round" fill="none">
-        <animate attributeName="d" dur="1.2s" repeatCount="indefinite"
-          values="M-9,2.6 C-6,5 -2,7 1,8.5;M-9,2.6 C-8,6 -7,8 -6,10;M-9,2.6 C-6,5 -2,7 1,8.5"/>
-      </path>
-      <path d="M-14,-3.1 C-11,-3.6 -9,-3.4 -8,-3 C-6.8,-2.4 -6.5,-1 -6.5,0 C-6.5,1 -6.8,2.4 -8,3 C-9,3.4 -11,3.6 -14,3.1 C-15.2,1.5 -15.2,-1.5 -14,-3.1Z"
-        fill="{SKIN}"/>
-      <circle cx="-3" cy="0" r="3.4" fill="{HAIR}"/>
-      <path d="M-3,-3.4 C-1,-3 0.4,-1.6 0.4,0 C0.4,1.6 -1,3 -3,3.4" stroke="{HAIR_DARK}" stroke-width="0.6" fill="none"/>
-      <path d="M-2.4,-4.4 l0.6,1 1.2,0.1 -0.9,0.75 0.3,1.2 -1.2,-0.7 -1.1,0.7 0.3,-1.2 -0.9,-0.75 1.2,-0.1Z" fill="#FFD166"/>"""))
-    for k, (dist, ry) in enumerate([(7.5, 2.0), (11.5, 1.6), (15.5, 1.1)]):
-        parts.append(part(
-            dist,
-            f'<ellipse rx="3.4" ry="{ry}" fill="{HAIR if k % 2 == 0 else HAIR_DARK}" fill-opacity="0.95"/>',
-            wiggle=0.25 + k * 0.2, phase=0.3 + k * 0.12))
-    return "\n  ".join(parts)
+def poly(points):
+    return "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in points) + " Z"
 
 
 def shell(x, y):
@@ -297,13 +334,12 @@ def build(cal):
                               f'font-family="{FONT}" font-size="11">{MONTHS[first.month - 1]}</text>')
             last = first.month
 
-    path = "M" + " L".join(f"{x:.1f},{y:.1f}" for x, y in samples)
     legend_x = W - 150
     legend = "".join(
         f'<rect x="{legend_x + 40 + i * 16}" y="{H - 34}" width="{CELL}" height="{CELL}" rx="2.5" fill="{col}"/>'
         for i, col in enumerate(LEVELS.values()))
 
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 {W} {H}" width="{W}" height="{H}">
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}">
   <defs>
     <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="{BG_TOP}"/><stop offset="1" stop-color="{BG_BOTTOM}"/>
@@ -317,7 +353,6 @@ def build(cal):
     <radialGradient id="glow">
       <stop offset="0" stop-color="#5EF2FF" stop-opacity="0.22"/><stop offset="1" stop-color="#5EF2FF" stop-opacity="0"/>
     </radialGradient>
-    <path id="route" d="{path}" fill="none"/>
     <clipPath id="panel"><rect x="1" y="1" width="{W - 2}" height="{H - 2}" rx="14"/></clipPath>
   </defs>
   <rect x="1" y="1" width="{W - 2}" height="{H - 2}" rx="14" fill="url(#sea)" stroke="{BORDER}"/>
@@ -331,7 +366,7 @@ def build(cal):
   <text x="{legend_x}" y="{H - 24}" fill="{MUTED}" font-family="{FONT}" font-size="11">Menos</text>
   {legend}
   <text x="{legend_x + 40 + 5 * 16 + 4}" y="{H - 24}" fill="{MUTED}" font-family="{FONT}" font-size="11">Más</text>
-  {mermaid(dur, home, total / travel)}
+  {mermaid(samples, lengths, travel, dur)}
   {shell(*NEST)}
   </g>
 </svg>
